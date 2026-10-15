@@ -1310,34 +1310,38 @@
     }
 
     function updateSlotButton(slotIdx) {
-      const slot = slotIdx === 1 ? slot1 : slot2;
-      const btn = document.getElementById(`btnSlotAction${slotIdx}`);
-      const stakeInput = document.getElementById(`stakeInput${slotIdx}`);
-      const stake = parseFloat(stakeInput.value) || 50;
+  const slot = slotIdx === 1 ? slot1 : slot2;
+  const btn = document.getElementById(`btnSlotAction${slotIdx}`);
+  const stakeInput = document.getElementById(`stakeInput${slotIdx}`);
+  const stake = parseFloat(stakeInput.value) || 50;
 
-      if (aviatorPhase === 'WAITING') {
-        if (slot.state === 'QUEUED') {
-          btn.className = 'btn btn-action-bet btn-bet-queued';
-          btn.innerText = `CANCEL (KES ${slot.stake})`;
-        } else {
-          btn.className = 'btn btn-action-bet btn-bet-ready';
-          btn.innerText = `BET KES ${stake}`;
-        }
-      } else if (aviatorPhase === 'FLYING') {
-        if (slot.state === 'ACTIVE') {
-          const win = (slot.stake * currentMultiplier).toFixed(2);
-          btn.className = 'btn btn-action-bet btn-cashout';
-          btn.innerText = `CASHOUT KES ${win}`;
-        } else {
-          btn.className = 'btn btn-action-bet btn-wallet';
-          btn.disabled = true;
-          btn.innerText = `WAITING...`;
-        }
-      } else {
-        btn.disabled = false;
-        btn.className = 'btn btn-action-bet btn-wallet';
-        btn.innerText = `FLEW AWAY`;
-      }
+  // Always re-enable the button first
+  btn.disabled = false;
+
+  if (aviatorPhase === 'WAITING') {
+    if (slot.state === 'QUEUED') {
+      btn.className = 'btn btn-action-bet btn-bet-queued';
+      btn.innerText = `CANCEL (KES ${slot.stake})`;
+    } else {
+      btn.className = 'btn btn-action-bet btn-bet-ready';
+      btn.innerText = `BET KES ${stake}`;
+    }
+  } else if (aviatorPhase === 'FLYING') {
+    if (slot.state === 'ACTIVE') {
+      const win = (slot.stake * currentMultiplier).toFixed(2);
+      btn.className = 'btn btn-action-bet btn-cashout';
+      btn.innerText = `CASHOUT KES ${win}`;
+    } else {
+      btn.className = 'btn btn-action-bet btn-wallet';
+      btn.disabled = true;               // only disable when you have no active bet
+      btn.innerText = `WAITING...`;
+    }
+  } else {
+    // CRASHED
+    btn.className = 'btn btn-action-bet btn-wallet';
+    btn.innerText = `FLEW AWAY`;
+  }
+    
     }
 
     function handleSlotAction(slotIdx) {
