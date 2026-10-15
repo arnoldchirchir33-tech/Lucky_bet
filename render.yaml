@@ -1,0 +1,13 @@
+services:
+  # Web Service for Render to serve the LuckyBet Web Platform & APK download portal
+  - type: web
+    name: luckybet-web
+    env: node
+    plan: free
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production

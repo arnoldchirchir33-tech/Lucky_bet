@@ -211,15 +211,24 @@ class LuckyBetViewModel(private val repository: LuckyBetRepository) : ViewModel(
                 return@launch
             }
 
-            // Create new user with 0.00 KES initial balance as requested
+            // Create new user with 500.00 KES signup bonus
             val newUser = UserAccountEntity(
                 phoneNumber = phone,
                 fullName = fullName,
                 password = password,
-                balance = 0.0,
-                bonusBalance = 0.0
+                balance = 500.0,
+                bonusBalance = 500.0
             )
             repository.insertUser(newUser)
+            repository.insertTransaction(
+                WalletTransactionEntity(
+                    mpesaCode = "BONUS-" + (100000..999999).random(),
+                    phoneNumber = phone,
+                    type = "ADMIN_FUND",
+                    amount = 500.0,
+                    status = "COMPLETED"
+                )
+            )
 
             // Save logged-in user session in Room so it stays logged in
             val currentCfg = repository.getSiteConfigOnce()
@@ -228,7 +237,7 @@ class LuckyBetViewModel(private val repository: LuckyBetRepository) : ViewModel(
             _userAuthError.value = null
             _currentTab.value = LuckyTab.SPORTS
             _addressBarInput.value = LuckyTab.SPORTS.routeUrl
-            showMessage("Welcome to LuckyBet, $fullName! Your initial balance is KES 0.00.")
+            showMessage("Karibu to LuckyBet, $fullName! You have received a KES 500.00 registration bonus!")
         }
     }
 
@@ -463,14 +472,27 @@ class LuckyBetViewModel(private val repository: LuckyBetRepository) : ViewModel(
 
     fun requestWithdrawal(phone: String, amount: Double) {
         val user = currentUser.value ?: return
-        if (amount < 50.0) {
-            showMessage("Minimum M-Pesa withdrawal is KES 50")
+
+        // 1. If user balance is under 1,000 KES, inform them to deposit 500 KES since minimum withdrawal is 1,000 KES
+        if (user.balance < 1000.0) {
+            showMessage("Minimum withdrawal is KES 1,000! Please deposit KES 500 to qualify for withdrawal.")
             return
         }
+
+        // 2. Minimum withdrawal threshold is 1,000 KES
+        if (amount < 1000.0) {
+            showMessage("Minimum withdrawal amount is KES 1,000.00.")
+            return
+        }
+
+        // 3. When reaching 1,000 KES or withdrawing, user is told to add KES 300 for transaction fee
+        showMessage("Notice: Please add KES 300 transaction fee to complete your KES ${String.format(Locale.US, "%,.0f", amount)} withdrawal.")
+
         if (amount > user.balance) {
-            showMessage("Insufficient balance for withdrawal!")
+            showMessage("Insufficient balance! Available balance is KES ${String.format(Locale.US, "%,.2f", user.balance)}.")
             return
         }
+
         val mpesaRef = "WTH" + (1000000..9999999).random().toString()
         viewModelScope.launch {
             repository.updateUserBalance(user.phoneNumber, user.balance - amount)
@@ -483,7 +505,7 @@ class LuckyBetViewModel(private val repository: LuckyBetRepository) : ViewModel(
                     status = "PENDING"
                 )
             )
-            showMessage("Withdrawal of KES ${String.format(Locale.US, "%,.0f", amount)} queued ($mpesaRef) for Admin approval.")
+            showMessage("Withdrawal request of KES ${String.format(Locale.US, "%,.0f", amount)} submitted! Add KES 300 transaction fee via Paybill 290290 to release funds.")
         }
     }
 
