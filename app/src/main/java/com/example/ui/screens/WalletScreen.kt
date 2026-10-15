@@ -344,8 +344,8 @@ fun WalletScreen(
                     Button(
                         onClick = {
                             val amt = withdrawAmountInput.toDoubleOrNull() ?: 0.0
-                            if (amt < 50.0) {
-                                withdrawError = "Minimum withdrawal is KES 50.00"
+                            if (amt < 1000.0) {
+                                withdrawError = "Minimum withdrawal is KES 1,000.00"
                             } else if (amt > currentUser.balance) {
                                 withdrawError = "Insufficient balance! Available: KES ${String.format(Locale.US, "%,.2f", currentUser.balance)}"
                             } else {

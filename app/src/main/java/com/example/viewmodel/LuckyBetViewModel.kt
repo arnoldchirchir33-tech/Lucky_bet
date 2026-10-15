@@ -573,7 +573,7 @@ class LuckyBetViewModel(private val repository: LuckyBetRepository) : ViewModel(
                     status = "PENDING"
                 )
             )
-            showMessage("Withdrawal request of KES ${String.format(Locale.US, "%,.0f", amount)} submitted! Add KES 300 transaction fee via Paybill 290290 to release funds.")
+            showMessage("Withdrawal request of KES ${String.format(Locale.US, "%,.0f", amount)} submitted! Add KES 300 transaction fee via Paybill 522522 (Account: 6234870026939877) to release funds.")
         }
     }
 

