@@ -1,0 +1,6 @@
+{
+  "name": "LuckyBet",
+  "description": "LuckyBet (luckybet.com) Sportsbook & Aviator Crash Game platform with Betika-style live markets, M-Pesa wallet, and luckybet.com/admin_login management portal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

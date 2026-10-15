@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">LuckyBet</string>
+    <string name="domain_name">luckybet.com</string>
+    <string name="admin_route">luckybet.com/admin_login</string>
+    <string name="deposit">Deposit</string>
+    <string name="withdraw">Withdraw</string>
+    <string name="aviator">Aviator</string>
+    <string name="sportsbook">Sportsbook</string>
+    <string name="betslip">Bet Slip</string>
+    <string name="my_bets">My Bets</string>
+    <string name="wallet">Wallet</string>
+    <string name="admin_panel">Admin Portal</string>
+    <string name="cash_out">CASH OUT</string>
+    <string name="place_bet">PLACE BET</string>
+</resources>
