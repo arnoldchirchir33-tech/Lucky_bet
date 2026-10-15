@@ -100,33 +100,9 @@ fun AviatorScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("aviator_history_row")
-                ) {
-                    items(history, key = { it.id }) { item ->
-                        val pillColor = when {
-                            item.multiplier >= 10.0 -> Color(0xFFC026D3) // Pink/Magenta 10x+
-                            item.multiplier >= 2.0 -> LuckyPurple       // Purple 2x+
-                            else -> Color(0xFF0284C7)                   // Blue <2x
-                        }
-                        Surface(
-                            color = pillColor.copy(alpha = 0.22f),
-                            shape = RoundedCornerShape(50),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, pillColor)
-                        ) {
-                            Text(
-                                text = String.format(Locale.US, "%.2fx", item.multiplier),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-                }
+                com.example.ui.components.AviatorRoundHistoryRow(
+                    history = history
+                )
             }
         }
 

@@ -41,7 +41,9 @@ fun WalletScreen(
     transactions: List<WalletTransactionEntity>,
     onWithdraw: (String, Double) -> Unit,
     onLogoutUser: () -> Unit,
-    onBackToSports: () -> Unit
+    onBackToSports: () -> Unit,
+    onDepositClick: () -> Unit = {},
+    onWithdrawClick: () -> Unit = {}
 ) {
     BackHandler { onBackToSports() }
 
@@ -73,7 +75,7 @@ fun WalletScreen(
             .testTag("wallet_screen"),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 1. USER PROFILE & BALANCE CARD
+        // 1. USER PROFILE & BALANCE CARD WITH DEPOSIT / WITHDRAW ACTION BUTTONS
         item {
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -153,29 +155,40 @@ fun WalletScreen(
                         modifier = Modifier.testTag("wallet_current_balance_text")
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                    Surface(
-                        color = LuckySurfaceElevated,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    // Dedicated Deposit & Withdraw Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Button(
+                            onClick = onDepositClick,
+                            colors = ButtonDefaults.buttonColors(containerColor = LuckyGreen),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                                .testTag("wallet_deposit_button")
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = LuckyGoldBright,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Account funded by Admin or Paybill 290290. All credited funds reflect instantly below.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = LuckyTextSecondary
-                            )
+                            Icon(Icons.Default.AddCard, contentDescription = null, tint = Color(0xFF042F2E))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("DEPOSIT", color = Color(0xFF042F2E), fontWeight = FontWeight.Black)
+                        }
+
+                        Button(
+                            onClick = onWithdrawClick,
+                            colors = ButtonDefaults.buttonColors(containerColor = LuckySurfaceElevated),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, LuckyGoldBright),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                                .testTag("wallet_withdraw_button")
+                        ) {
+                            Icon(Icons.Default.Payments, contentDescription = null, tint = LuckyGoldBright)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("WITHDRAW", color = LuckyGoldBright, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

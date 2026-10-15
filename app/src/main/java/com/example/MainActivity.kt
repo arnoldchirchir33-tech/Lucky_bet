@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -110,6 +111,16 @@ fun LuckyBetApp(viewModel: LuckyBetViewModel) {
                 currentUser = activeUser,
                 onAddressChange = viewModel::onAddressBarChanged,
                 onNavigateUrl = { viewModel.submitAddressBarUrl(it) },
+                onDepositClick = {
+                    if (activeUser != null) {
+                        viewModel.navigateToTab(LuckyTab.DEPOSIT)
+                    }
+                },
+                onWithdrawClick = {
+                    if (activeUser != null) {
+                        viewModel.navigateToTab(LuckyTab.WITHDRAW)
+                    }
+                },
                 onAccountClick = {
                     if (activeUser != null) {
                         viewModel.navigateToTab(LuckyTab.WALLET)
@@ -151,6 +162,10 @@ fun LuckyBetApp(viewModel: LuckyBetViewModel) {
                     transactions = allTransactions,
                     onFundUserByPhone = viewModel::adminFundUserByPhone,
                     onSetUserExactBalance = viewModel::adminSetUserExactBalance,
+                    onGenerateVerificationCode = viewModel::adminGenerateVerificationCode,
+                    onVerifyUserDirectly = viewModel::adminVerifyUserDirectly,
+                    onToggleFreezeUser = viewModel::adminToggleFreezeUser,
+                    onToggleBanUser = viewModel::adminToggleBanUser,
                     onSetNextCrash = viewModel::adminSetNextAviatorCrash,
                     onSetHouseMode = viewModel::adminSetAviatorHouseMode,
                     onUpdatePromo = viewModel::adminUpdatePromoBanner,
@@ -166,7 +181,8 @@ fun LuckyBetApp(viewModel: LuckyBetViewModel) {
                     authError = userAuthError,
                     onClearError = viewModel::clearUserAuthError,
                     onLogin = viewModel::loginUserAccount,
-                    onRegister = viewModel::registerUserAccount
+                    onRegister = viewModel::registerUserAccount,
+                    onVerifyCode = viewModel::verifyUserAccount
                 )
 
                 // 3. Authenticated User Screens
@@ -220,7 +236,9 @@ fun LuckyBetApp(viewModel: LuckyBetViewModel) {
                     transactions = userTransactions,
                     onWithdraw = viewModel::requestWithdrawal,
                     onLogoutUser = viewModel::logoutUserAccount,
-                    onBackToSports = { viewModel.navigateToTab(LuckyTab.SPORTS) }
+                    onBackToSports = { viewModel.navigateToTab(LuckyTab.SPORTS) },
+                    onDepositClick = { viewModel.navigateToTab(LuckyTab.DEPOSIT) },
+                    onWithdrawClick = { viewModel.navigateToTab(LuckyTab.WITHDRAW) }
                 )
 
                 currentTab == LuckyTab.DEPOSIT -> DepositScreen(
@@ -244,6 +262,8 @@ fun LuckyBetTopBrowserHeader(
     currentUser: UserAccountEntity?,
     onAddressChange: (String) -> Unit,
     onNavigateUrl: (String) -> Unit,
+    onDepositClick: () -> Unit = {},
+    onWithdrawClick: () -> Unit = {},
     onAccountClick: () -> Unit,
     onLogoClick: () -> Unit
 ) {
@@ -319,7 +339,7 @@ fun LuckyBetTopBrowserHeader(
                     .testTag("browser_url_input")
             )
 
-            // Brand Identity + Logged-In User Balance Badge
+            // Brand Identity + Balance + DEPOSIT & WITHDRAW Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -344,25 +364,25 @@ fun LuckyBetTopBrowserHeader(
                                 .size(18.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "LUCKY",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium,
                             color = Color.White,
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(
                             text = "BET",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium,
                             color = LuckyGreenBright,
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(
                             text = ".COM",
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelSmall,
                             color = LuckyGoldBright,
-                            modifier = Modifier.padding(start = 2.dp)
+                            modifier = Modifier.padding(start = 1.dp)
                         )
                     }
                 }
@@ -370,55 +390,90 @@ fun LuckyBetTopBrowserHeader(
                 if (currentUser != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        // Balance Badge
                         Surface(
                             color = LuckySurfaceElevated,
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(8.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, LuckyBorder),
                             modifier = Modifier
                                 .clickable { onAccountClick() }
                                 .testTag("header_balance_badge")
                         ) {
-                            Column(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                horizontalAlignment = Alignment.End
-                            ) {
-                                Text(
-                                    text = currentUser.phoneNumber,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = LuckyTextSecondary
-                                )
-                                Text(
-                                    text = "KES ${String.format(Locale.US, "%,.2f", currentUser.balance)}",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = LuckyGreenBright,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                            Text(
+                                text = "KES ${String.format(Locale.US, "%,.0f", currentUser.balance)}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = LuckyGreenBright,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            )
                         }
 
+                        // Prominent DEPOSIT Button
                         Button(
-                            onClick = onAccountClick,
+                            onClick = onDepositClick,
                             colors = ButtonDefaults.buttonColors(containerColor = LuckyGreen),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                             modifier = Modifier
-                                .height(42.dp)
-                                .testTag("header_account_button")
+                                .height(36.dp)
+                                .testTag("header_deposit_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.AccountBalanceWallet,
-                                contentDescription = "Wallet",
+                                imageVector = Icons.Default.AddCard,
+                                contentDescription = "Deposit",
                                 tint = Color(0xFF042F2E),
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "WALLET",
-                                style = MaterialTheme.typography.labelLarge,
+                                text = "DEPOSIT",
+                                style = MaterialTheme.typography.labelMedium,
                                 color = Color(0xFF042F2E),
-                                fontWeight = FontWeight.ExtraBold
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+
+                        // Prominent WITHDRAW Button
+                        Button(
+                            onClick = onWithdrawClick,
+                            colors = ButtonDefaults.buttonColors(containerColor = LuckySurfaceElevated),
+                            shape = RoundedCornerShape(8.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, LuckyGoldBright),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                            modifier = Modifier
+                                .height(36.dp)
+                                .testTag("header_withdraw_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Payments,
+                                contentDescription = "Withdraw",
+                                tint = LuckyGoldBright,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "WITHDRAW",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = LuckyGoldBright,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Account Profile Button
+                        IconButton(
+                            onClick = onAccountClick,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(LuckySurfaceElevated, RoundedCornerShape(8.dp))
+                                .testTag("header_account_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = "Account",
+                                tint = LuckyTextPrimary,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }

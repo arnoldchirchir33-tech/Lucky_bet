@@ -191,6 +191,10 @@ fun AdminDashboardScreen(
     transactions: List<WalletTransactionEntity>,
     onFundUserByPhone: (String, Double) -> Unit,
     onSetUserExactBalance: (String, Double) -> Unit,
+    onGenerateVerificationCode: (String) -> Unit = {},
+    onVerifyUserDirectly: (String) -> Unit = {},
+    onToggleFreezeUser: (String, Boolean) -> Unit = { _, _ -> },
+    onToggleBanUser: (String, Boolean) -> Unit = { _, _ -> },
     onSetNextCrash: (Double?) -> Unit,
     onSetHouseMode: (String) -> Unit,
     onUpdatePromo: (String) -> Unit,
@@ -203,7 +207,7 @@ fun AdminDashboardScreen(
     BackHandler { onLogout() }
 
     var selectedAdminSection by remember { mutableStateOf(0) }
-    val sections = listOf("Fund Accounts", "Aviator Control", "Sports & Odds", "Bets & Withdrawals")
+    val sections = listOf("Users & Verification", "Aviator Control", "Sports & Odds", "Bets & Withdrawals")
 
     val totalStaked = remember(bets) { bets.sumOf { it.stake } }
     val totalPaid = remember(bets) {
@@ -321,11 +325,15 @@ fun AdminDashboardScreen(
 
         // Section Content
         when (selectedAdminSection) {
-            0 -> AdminFundUserAccountsTab(
+            0 -> AdminUserAccountsAndVerificationTab(
                 users = users,
                 promoBannerText = config.promoBannerText,
                 onFundUserByPhone = onFundUserByPhone,
                 onSetUserExactBalance = onSetUserExactBalance,
+                onGenerateVerificationCode = onGenerateVerificationCode,
+                onVerifyUserDirectly = onVerifyUserDirectly,
+                onToggleFreezeUser = onToggleFreezeUser,
+                onToggleBanUser = onToggleBanUser,
                 onUpdatePromo = onUpdatePromo
             )
             1 -> AdminAviatorControlTab(
@@ -373,25 +381,101 @@ private fun AdminKpiTile(
 }
 
 @Composable
-private fun AdminFundUserAccountsTab(
+private fun AdminUserAccountsAndVerificationTab(
     users: List<UserAccountEntity>,
     promoBannerText: String,
     onFundUserByPhone: (String, Double) -> Unit,
     onSetUserExactBalance: (String, Double) -> Unit,
+    onGenerateVerificationCode: (String) -> Unit,
+    onVerifyUserDirectly: (String) -> Unit,
+    onToggleFreezeUser: (String, Boolean) -> Unit,
+    onToggleBanUser: (String, Boolean) -> Unit,
     onUpdatePromo: (String) -> Unit
 ) {
     var phoneToFund by remember { mutableStateOf("") }
     var amountToFund by remember { mutableStateOf("500") }
     var promoInput by remember(promoBannerText) { mutableStateOf(promoBannerText) }
+    var searchQuery by remember { mutableStateOf("") }
+    var filterMode by remember { mutableStateOf("ALL") } // ALL, PENDING, ACTIVE, FROZEN, BANNED
     val quickFundAmounts = listOf(100, 250, 500, 1000, 2500, 5000)
+
+    val pendingCount = remember(users) { users.count { !it.isVerified } }
+    val frozenCount = remember(users) { users.count { it.isFrozen } }
+    val bannedCount = remember(users) { users.count { it.isBanned } }
+    val activeCount = remember(users) { users.count { it.isVerified && !it.isFrozen && !it.isBanned } }
+
+    val filteredUsers = remember(users, searchQuery, filterMode) {
+        users.filter { u ->
+            val matchesSearch = searchQuery.isBlank() ||
+                u.phoneNumber.contains(searchQuery, ignoreCase = true) ||
+                u.fullName.contains(searchQuery, ignoreCase = true)
+            val matchesFilter = when (filterMode) {
+                "PENDING" -> !u.isVerified
+                "ACTIVE" -> u.isVerified && !u.isFrozen && !u.isBanned
+                "FROZEN" -> u.isFrozen
+                "BANNED" -> u.isBanned
+                else -> true
+            }
+            matchesSearch && matchesFilter
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Fund User Account by Phone Number & Amount Card
+        // Top User Status Summary Cards
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    color = LuckySurfaceElevated,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text("Active", style = MaterialTheme.typography.bodySmall, color = LuckyTextSecondary)
+                        Text("$activeCount", style = MaterialTheme.typography.titleMedium, color = LuckyGreenBright, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Surface(
+                    color = LuckySurfaceElevated,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text("Pending Code", style = MaterialTheme.typography.bodySmall, color = LuckyTextSecondary)
+                        Text("$pendingCount", style = MaterialTheme.typography.titleMedium, color = LuckyGoldBright, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Surface(
+                    color = LuckySurfaceElevated,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text("Frozen", style = MaterialTheme.typography.bodySmall, color = LuckyTextSecondary)
+                        Text("$frozenCount", style = MaterialTheme.typography.titleMedium, color = Color(0xFFF97316), fontWeight = FontWeight.Bold)
+                    }
+                }
+                Surface(
+                    color = LuckySurfaceElevated,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text("Banned", style = MaterialTheme.typography.bodySmall, color = LuckyTextSecondary)
+                        Text("$bannedCount", style = MaterialTheme.typography.titleMedium, color = LuckyCrimsonLight, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // Quick Fund Tool Card
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -407,7 +491,7 @@ private fun AdminFundUserAccountsTab(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "FUND REGISTERED USER ACCOUNT",
+                            text = "DIRECT ACCOUNT FUNDING",
                             style = MaterialTheme.typography.titleMedium,
                             color = LuckyGreenBright,
                             fontWeight = FontWeight.ExtraBold
@@ -415,7 +499,7 @@ private fun AdminFundUserAccountsTab(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Enter the user's registered phone number and the KES amount to credit their account (or tap any registered user below to auto-select their phone).",
+                        text = "Credit any user account by phone number, or select a user from the list below.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = LuckyTextSecondary
                     )
@@ -425,13 +509,9 @@ private fun AdminFundUserAccountsTab(
                     OutlinedTextField(
                         value = phoneToFund,
                         onValueChange = { phoneToFund = it },
-                        label = { Text("User Phone Number (e.g. 0712345678)") },
+                        label = { Text("User Phone (e.g. 0712345678)") },
                         leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.PhoneAndroid,
-                                contentDescription = null,
-                                tint = LuckyGoldBright
-                            )
+                            Icon(Icons.Default.PhoneAndroid, contentDescription = null, tint = LuckyGoldBright)
                         },
                         singleLine = true,
                         shape = RoundedCornerShape(10.dp),
@@ -445,13 +525,9 @@ private fun AdminFundUserAccountsTab(
                     OutlinedTextField(
                         value = amountToFund,
                         onValueChange = { amountToFund = it.filter { ch -> ch.isDigit() || ch == '.' } },
-                        label = { Text("Amount to Fund (KES)") },
+                        label = { Text("Amount (KES)") },
                         leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.AttachMoney,
-                                contentDescription = null,
-                                tint = LuckyGreenBright
-                            )
+                            Icon(Icons.Default.AttachMoney, contentDescription = null, tint = LuckyGreenBright)
                         },
                         singleLine = true,
                         shape = RoundedCornerShape(10.dp),
@@ -506,14 +582,10 @@ private fun AdminFundUserAccountsTab(
                                 .height(50.dp)
                                 .testTag("admin_fund_account_button")
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.AddCard,
-                                contentDescription = null,
-                                tint = Color(0xFF042F2E)
-                            )
+                            Icon(Icons.Default.AddCard, contentDescription = null, tint = Color(0xFF042F2E))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "FUND ACCOUNT (+KES ${amountToFund.ifBlank { "0" }})",
+                                text = "FUND (+KES ${amountToFund.ifBlank { "0" }})",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = Color(0xFF042F2E),
                                 fontWeight = FontWeight.ExtraBold
@@ -543,17 +615,84 @@ private fun AdminFundUserAccountsTab(
             }
         }
 
-        // Registered Users Directory (Tap to select & fund)
+        // Search and Filter Bar
         item {
-            Text(
-                text = "REGISTERED USER ACCOUNTS (${users.size}) • TAP TO SELECT",
-                style = MaterialTheme.typography.titleMedium,
-                color = LuckyGoldBright,
-                fontWeight = FontWeight.Bold
-            )
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = LuckySurfaceDark),
+                border = androidx.compose.foundation.BorderStroke(1.dp, LuckyBorder)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "USER MANAGEMENT & VERIFICATION (${users.size})",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = LuckyGoldBright,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Search users by phone or name...") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, contentDescription = null, tint = LuckyTextSecondary)
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear", tint = LuckyTextSecondary)
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Filter chips row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            "ALL" to "All (${users.size})",
+                            "PENDING" to "Pending ($pendingCount)",
+                            "ACTIVE" to "Active ($activeCount)",
+                            "FROZEN" to "Frozen ($frozenCount)",
+                            "BANNED" to "Banned ($bannedCount)"
+                        ).forEach { (key, label) ->
+                            val isSelected = filterMode == key
+                            Surface(
+                                color = if (isSelected) LuckyGold else LuckySurfaceElevated,
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { filterMode = key }
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 2.dp)
+                                ) {
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (isSelected) Color(0xFF1E1B18) else LuckyTextPrimary,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        if (users.isEmpty()) {
+        // List of Users
+        if (filteredUsers.isEmpty()) {
             item {
                 Card(
                     shape = RoundedCornerShape(12.dp),
@@ -561,63 +700,279 @@ private fun AdminFundUserAccountsTab(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "No users have registered yet. When someone registers on luckybet.com, their account starts at KES 0.00 and appears here for you to fund.",
+                        text = if (users.isEmpty()) {
+                            "No users have registered yet. When a user registers on luckybet.com, their profile will appear here with an admin-generated verification code."
+                        } else {
+                            "No users matching search or filter '$filterMode'."
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = LuckyTextSecondary,
-                        modifier = Modifier.padding(14.dp)
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
             }
         } else {
-            items(users, key = { it.id }) { u ->
+            items(filteredUsers, key = { it.id }) { u ->
                 val isSelected = phoneToFund == u.phoneNumber
+
                 Card(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (isSelected) LuckySurfaceElevated else LuckySurfaceDark
                     ),
                     border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        if (isSelected) LuckyGreen else LuckyBorder
+                        1.5.dp,
+                        when {
+                            u.isBanned -> LuckyCrimson
+                            u.isFrozen -> Color(0xFFF97316)
+                            isSelected -> LuckyGreen
+                            !u.isVerified -> LuckyGold
+                            else -> LuckyBorder
+                        }
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { phoneToFund = u.phoneNumber }
-                        .testTag("admin_user_row_${u.phoneNumber}")
+                        .testTag("admin_user_card_${u.phoneNumber}")
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(14.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = u.fullName,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = LuckyTextPrimary,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Phone: ${u.phoneNumber}",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = LuckyGoldBright
-                            )
+                        // User Header Row (Name, Phone, Balance, Status Badges)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = u.fullName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Phone: ${u.phoneNumber}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = LuckyGoldBright
+                                )
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "KES ${String.format(Locale.US, "%,.2f", u.balance)}",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = LuckyGreenBright,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                                Text(
+                                    text = "Bonus: KES ${String.format(Locale.US, "%,.0f", u.bonusBalance)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = LuckyTextSecondary
+                                )
+                            }
                         }
 
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = "KES ${String.format(Locale.US, "%,.2f", u.balance)}",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = LuckyGreenBright,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                            Text(
-                                text = "Tap to select phone",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = LuckyTextSecondary
-                            )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Status Badges Row
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Verification status badge
+                            Surface(
+                                color = if (u.isVerified) LuckyGreen.copy(alpha = 0.2f) else LuckyGold.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (u.isVerified) Icons.Default.CheckCircle else Icons.Default.HourglassEmpty,
+                                        contentDescription = null,
+                                        tint = if (u.isVerified) LuckyGreenBright else LuckyGoldBright,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (u.isVerified) "VERIFIED" else "PENDING VERIFICATION",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (u.isVerified) LuckyGreenBright else LuckyGoldBright,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            // Ban badge
+                            if (u.isBanned) {
+                                Surface(
+                                    color = LuckyCrimson.copy(alpha = 0.25f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = "BANNED",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = LuckyCrimsonLight,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            } else if (u.isFrozen) {
+                                Surface(
+                                    color = Color(0x33F97316),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = "FROZEN",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color(0xFFF97316),
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            } else {
+                                Surface(
+                                    color = LuckyGreen.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = "ACTIVE",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = LuckyGreenBright,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Verification Code Section
+                        Surface(
+                            color = LuckyBgDark,
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, LuckyBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "VERIFICATION CODE",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = LuckyTextSecondary
+                                    )
+                                    Text(
+                                        text = u.verificationCode.ifBlank { "NOT GENERATED" },
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = LuckyGoldBright,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    OutlinedButton(
+                                        onClick = { onGenerateVerificationCode(u.phoneNumber) },
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
+                                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("New Code", style = MaterialTheme.typography.labelSmall)
+                                    }
+
+                                    if (!u.isVerified) {
+                                        Button(
+                                            onClick = { onVerifyUserDirectly(u.phoneNumber) },
+                                            colors = ButtonDefaults.buttonColors(containerColor = LuckyGreen),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                        ) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF042F2E), modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Approve", style = MaterialTheme.typography.labelSmall, color = Color(0xFF042F2E), fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Admin Action Buttons Row: Freeze, Ban, Select Phone
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            // Freeze / Unfreeze
+                            OutlinedButton(
+                                onClick = { onToggleFreezeUser(u.phoneNumber, u.isFrozen) },
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = if (u.isFrozen) LuckyGreenBright else Color(0xFFF97316)
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = if (u.isFrozen) Icons.Default.LockOpen else Icons.Default.Lock,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (u.isFrozen) "Unfreeze" else "Freeze",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            // Ban / Unban
+                            OutlinedButton(
+                                onClick = { onToggleBanUser(u.phoneNumber, u.isBanned) },
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = if (u.isBanned) LuckyGreenBright else LuckyCrimsonLight
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = if (u.isBanned) Icons.Default.CheckCircle else Icons.Default.Block,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (u.isBanned) "Unban" else "Ban User",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            // Select for Funding
+                            Button(
+                                onClick = { phoneToFund = u.phoneNumber },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isSelected) LuckyGold else LuckySurfaceElevated
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1.1f)
+                            ) {
+                                Text(
+                                    text = if (isSelected) "Selected" else "Select Phone",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isSelected) Color(0xFF1E1B18) else LuckyTextPrimary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -658,6 +1013,7 @@ private fun AdminFundUserAccountsTab(
         }
     }
 }
+
 
 @Composable
 private fun AdminAviatorControlTab(

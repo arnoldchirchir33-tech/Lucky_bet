@@ -19,6 +19,12 @@ class LuckyBetRepository(private val dao: LuckyBetDao) {
 
     suspend fun updateUser(user: UserAccountEntity) = dao.updateUser(user)
 
+    suspend fun setUserFrozen(phone: String, isFrozen: Boolean) = dao.setUserFrozen(phone, isFrozen)
+
+    suspend fun setUserBanned(phone: String, isBanned: Boolean) = dao.setUserBanned(phone, isBanned)
+
+    suspend fun setUserVerification(phone: String, code: String, isVerified: Boolean) = dao.setUserVerification(phone, code, isVerified)
+
     suspend fun ensureSeeded() {
         val config = dao.getSiteConfigOnce()
         if (config == null) {

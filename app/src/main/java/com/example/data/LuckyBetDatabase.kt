@@ -29,6 +29,15 @@ interface LuckyBetDao {
     @Update
     suspend fun updateUser(user: UserAccountEntity)
 
+    @Query("UPDATE users SET isFrozen = :isFrozen WHERE phoneNumber = :phone")
+    suspend fun setUserFrozen(phone: String, isFrozen: Boolean)
+
+    @Query("UPDATE users SET isBanned = :isBanned WHERE phoneNumber = :phone")
+    suspend fun setUserBanned(phone: String, isBanned: Boolean)
+
+    @Query("UPDATE users SET verificationCode = :code, isVerified = :isVerified WHERE phoneNumber = :phone")
+    suspend fun setUserVerification(phone: String, code: String, isVerified: Boolean)
+
     // Matches
     @Query("SELECT * FROM matches ORDER BY isLive DESC, id ASC")
     fun getAllMatches(): Flow<List<MatchEntity>>
@@ -98,7 +107,7 @@ interface LuckyBetDao {
         WalletTransactionEntity::class,
         SiteConfigEntity::class
     ],
-    version = 2,
+    version = 4,
     exportSchema = false
 )
 abstract class LuckyBetDatabase : RoomDatabase() {

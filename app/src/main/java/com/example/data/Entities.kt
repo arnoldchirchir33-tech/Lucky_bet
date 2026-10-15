@@ -15,6 +15,10 @@ data class UserAccountEntity(
     val password: String,
     val balance: Double = 0.0,
     val bonusBalance: Double = 0.0,
+    val isVerified: Boolean = false,
+    val verificationCode: String = "",
+    val isFrozen: Boolean = false,
+    val isBanned: Boolean = false,
     val registeredAt: Long = System.currentTimeMillis()
 )
 

@@ -18,6 +18,9 @@ import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.lazy.items
+import com.example.data.AviatorRoundEntity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -310,6 +313,70 @@ fun AviatorActionButton(
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = contentColor.copy(alpha = 0.9f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 4. ROUND HISTORY COMPONENT
+ * Lists the multipliers from the last 10 rounds of the Aviator game formatted as a
+ * horizontal scrollable row with dynamic color grading based on the multiplier value.
+ */
+@Composable
+fun AviatorRoundHistoryRow(
+    history: List<com.example.data.AviatorRoundEntity>,
+    modifier: Modifier = Modifier,
+    onRoundClick: ((com.example.data.AviatorRoundEntity) -> Unit)? = null
+) {
+    val last10Rounds = remember(history) {
+        history.take(10)
+    }
+
+    androidx.compose.foundation.lazy.LazyRow(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("aviator_round_history_row"),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+    ) {
+        items(last10Rounds, key = { it.id }) { round ->
+            val mult = round.multiplier
+            val pillColor = when {
+                mult >= 10.0 -> Color(0xFFC026D3) // Fuchsia / Magenta
+                mult >= 2.0 -> LuckyPurple        // Purple
+                else -> Color(0xFF0284C7)         // Sky Blue
+            }
+
+            Surface(
+                color = pillColor.copy(alpha = 0.20f),
+                shape = RoundedCornerShape(50),
+                border = androidx.compose.foundation.BorderStroke(1.dp, pillColor),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .clickable(enabled = onRoundClick != null) {
+                        onRoundClick?.invoke(round)
+                    }
+                    .testTag("round_history_item_${round.id}")
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(pillColor)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = String.format(Locale.US, "%.2fx", mult),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

@@ -28,18 +28,26 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.ui.theme.*
 
+enum class AuthScreenMode {
+    LOGIN,
+    REGISTER,
+    VERIFY_CODE
+}
+
 @Composable
 fun UserAuthScreen(
     authError: String?,
     onClearError: () -> Unit,
     onLogin: (phone: String, password: String) -> Unit,
-    onRegister: (phone: String, fullName: String, password: String) -> Unit
+    onRegister: (phone: String, fullName: String, password: String) -> Unit,
+    onVerifyCode: (phone: String, code: String) -> Unit = { _, _ -> }
 ) {
-    var isRegisterMode by remember { mutableStateOf(false) }
+    var mode by remember { mutableStateOf(AuthScreenMode.LOGIN) }
     var phone by remember { mutableStateOf("") }
     var fullName by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var verificationCode by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var localError by remember { mutableStateOf<String?>(null) }
 
@@ -64,7 +72,7 @@ fun UserAuthScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Hero Header Banner
+                // Header Banner
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -116,7 +124,11 @@ fun UserAuthScreen(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = if (isRegisterMode) "CREATE YOUR LUCKYBET ACCOUNT" else "LOGIN TO LUCKYBET",
+                            text = when (mode) {
+                                AuthScreenMode.LOGIN -> "LOGIN TO LUCKYBET"
+                                AuthScreenMode.REGISTER -> "CREATE ACCOUNT"
+                                AuthScreenMode.VERIFY_CODE -> "VERIFY YOUR ACCOUNT"
+                            },
                             style = MaterialTheme.typography.headlineMedium,
                             color = Color.White,
                             fontWeight = FontWeight.ExtraBold
@@ -128,22 +140,22 @@ fun UserAuthScreen(
                     modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Mode Switcher Tabs (Login vs Register)
+                    // Switcher Tabs (Login vs Register vs Verify Code)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .background(LuckySurfaceElevated)
                             .padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Surface(
-                            color = if (!isRegisterMode) LuckyGreen else Color.Transparent,
+                            color = if (mode == AuthScreenMode.LOGIN) LuckyGreen else Color.Transparent,
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier
                                 .weight(1f)
                                 .clickable {
-                                    isRegisterMode = false
+                                    mode = AuthScreenMode.LOGIN
                                     localError = null
                                     onClearError()
                                 }
@@ -156,19 +168,19 @@ fun UserAuthScreen(
                                 Text(
                                     text = "LOGIN",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = if (!isRegisterMode) Color(0xFF042F2E) else LuckyTextPrimary,
+                                    color = if (mode == AuthScreenMode.LOGIN) Color(0xFF042F2E) else LuckyTextPrimary,
                                     fontWeight = FontWeight.ExtraBold
                                 )
                             }
                         }
 
                         Surface(
-                            color = if (isRegisterMode) LuckyGreen else Color.Transparent,
+                            color = if (mode == AuthScreenMode.REGISTER) LuckyGreen else Color.Transparent,
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier
                                 .weight(1f)
                                 .clickable {
-                                    isRegisterMode = true
+                                    mode = AuthScreenMode.REGISTER
                                     localError = null
                                     onClearError()
                                 }
@@ -181,7 +193,32 @@ fun UserAuthScreen(
                                 Text(
                                     text = "REGISTER",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = if (isRegisterMode) Color(0xFF042F2E) else LuckyTextPrimary,
+                                    color = if (mode == AuthScreenMode.REGISTER) Color(0xFF042F2E) else LuckyTextPrimary,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
+                        }
+
+                        Surface(
+                            color = if (mode == AuthScreenMode.VERIFY_CODE) LuckyGold else Color.Transparent,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .weight(1.1f)
+                                .clickable {
+                                    mode = AuthScreenMode.VERIFY_CODE
+                                    localError = null
+                                    onClearError()
+                                }
+                                .testTag("auth_tab_verify")
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.padding(vertical = 10.dp)
+                            ) {
+                                Text(
+                                    text = "VERIFY CODE",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = if (mode == AuthScreenMode.VERIFY_CODE) Color(0xFF1E1B18) else LuckyTextPrimary,
                                     fontWeight = FontWeight.ExtraBold
                                 )
                             }
@@ -190,6 +227,7 @@ fun UserAuthScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Phone input field for all modes
                     OutlinedTextField(
                         value = phone,
                         onValueChange = {
@@ -197,7 +235,7 @@ fun UserAuthScreen(
                             localError = null
                             onClearError()
                         },
-                        label = { Text("Safaricom Phone Number (e.g. 0712345678)") },
+                        label = { Text("Phone Number (e.g. 0712345678)") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.PhoneAndroid,
@@ -205,7 +243,7 @@ fun UserAuthScreen(
                                 tint = LuckyGreenBright
                             )
                         },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
@@ -213,7 +251,8 @@ fun UserAuthScreen(
                             .testTag("auth_phone_input")
                     )
 
-                    if (isRegisterMode) {
+                    // REGISTER SPECIFIC FIELDS (Strictly NO account or wallet rules displayed)
+                    if (mode == AuthScreenMode.REGISTER) {
                         Spacer(modifier = Modifier.height(10.dp))
                         OutlinedTextField(
                             value = fullName,
@@ -238,40 +277,42 @@ fun UserAuthScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = {
-                            password = it
-                            localError = null
-                            onClearError()
-                        },
-                        label = { Text("Password") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = null,
-                                tint = LuckyGreenBright
-                            )
-                        },
-                        trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    // PASSWORD FIELDS (Login & Register)
+                    if (mode == AuthScreenMode.LOGIN || mode == AuthScreenMode.REGISTER) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = {
+                                password = it
+                                localError = null
+                                onClearError()
+                            },
+                            label = { Text("Password") },
+                            leadingIcon = {
                                 Icon(
-                                    imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = "Toggle password"
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = LuckyGreenBright
                                 )
-                            }
-                        },
-                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("auth_password_input")
-                    )
+                            },
+                            trailingIcon = {
+                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                    Icon(
+                                        imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = "Toggle password"
+                                    )
+                                }
+                            },
+                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("auth_password_input")
+                        )
+                    }
 
-                    if (isRegisterMode) {
+                    if (mode == AuthScreenMode.REGISTER) {
                         Spacer(modifier = Modifier.height(10.dp))
                         OutlinedTextField(
                             value = confirmPassword,
@@ -297,18 +338,78 @@ fun UserAuthScreen(
                         )
                     }
 
+                    // VERIFY CODE SPECIFIC FIELDS
+                    if (mode == AuthScreenMode.VERIFY_CODE) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = verificationCode,
+                            onValueChange = {
+                                verificationCode = it.filter { ch -> ch.isDigit() }.take(6)
+                                localError = null
+                                onClearError()
+                            },
+                            label = { Text("6-Digit Verification Code") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Key,
+                                    contentDescription = null,
+                                    tint = LuckyGoldBright
+                                )
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("auth_verification_code_input")
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            color = LuckyGold.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AdminPanelSettings,
+                                    contentDescription = null,
+                                    tint = LuckyGoldBright,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Your verification code is generated on the Admin Panel (luckybet.com/admin_login). Enter your 6-digit code above to verify.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = LuckyGoldBright
+                                )
+                            }
+                        }
+                    }
+
                     val displayedError = localError ?: authError
                     if (displayedError != null) {
                         Spacer(modifier = Modifier.height(10.dp))
                         Surface(
-                            color = LuckyCrimson.copy(alpha = 0.2f),
+                            color = if (displayedError.contains("successful", ignoreCase = true) || displayedError.contains("verified", ignoreCase = true)) {
+                                LuckyGreen.copy(alpha = 0.2f)
+                            } else {
+                                LuckyCrimson.copy(alpha = 0.2f)
+                            },
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = displayedError,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = LuckyCrimsonLight,
+                                color = if (displayedError.contains("successful", ignoreCase = true) || displayedError.contains("verified", ignoreCase = true)) {
+                                    LuckyGreenBright
+                                } else {
+                                    LuckyCrimsonLight
+                                },
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(10.dp)
                             )
@@ -319,17 +420,36 @@ fun UserAuthScreen(
 
                     Button(
                         onClick = {
-                            if (isRegisterMode) {
-                                if (password != confirmPassword) {
-                                    localError = "Passwords do not match!"
-                                } else {
-                                    onRegister(phone, fullName, password)
+                            when (mode) {
+                                AuthScreenMode.REGISTER -> {
+                                    if (phone.isBlank() || fullName.isBlank() || password.isBlank()) {
+                                        localError = "Please fill in all registration fields."
+                                    } else if (password != confirmPassword) {
+                                        localError = "Passwords do not match!"
+                                    } else {
+                                        onRegister(phone, fullName, password)
+                                        mode = AuthScreenMode.VERIFY_CODE
+                                    }
                                 }
-                            } else {
-                                onLogin(phone, password)
+                                AuthScreenMode.LOGIN -> {
+                                    if (phone.isBlank() || password.isBlank()) {
+                                        localError = "Please enter phone number and password."
+                                    } else {
+                                        onLogin(phone, password)
+                                    }
+                                }
+                                AuthScreenMode.VERIFY_CODE -> {
+                                    if (phone.isBlank() || verificationCode.isBlank()) {
+                                        localError = "Please enter both phone number and verification code."
+                                    } else {
+                                        onVerifyCode(phone, verificationCode)
+                                    }
+                                }
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = LuckyGreen),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (mode == AuthScreenMode.VERIFY_CODE) LuckyGold else LuckyGreen
+                        ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -337,36 +457,66 @@ fun UserAuthScreen(
                             .testTag("auth_submit_button")
                     ) {
                         Icon(
-                            imageVector = if (isRegisterMode) Icons.Default.PersonAdd else Icons.Default.Login,
+                            imageVector = when (mode) {
+                                AuthScreenMode.REGISTER -> Icons.Default.PersonAdd
+                                AuthScreenMode.LOGIN -> Icons.Default.Login
+                                AuthScreenMode.VERIFY_CODE -> Icons.Default.Verified
+                            },
                             contentDescription = null,
-                            tint = Color(0xFF042F2E)
+                            tint = if (mode == AuthScreenMode.VERIFY_CODE) Color(0xFF1E1B18) else Color(0xFF042F2E)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (isRegisterMode) "REGISTER & ENTER LUCKYBET" else "LOGIN TO LUCKYBET",
+                            text = when (mode) {
+                                AuthScreenMode.REGISTER -> "REGISTER ACCOUNT"
+                                AuthScreenMode.LOGIN -> "LOGIN TO LUCKYBET"
+                                AuthScreenMode.VERIFY_CODE -> "VERIFY & ENTER ACCOUNT"
+                            },
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color(0xFF042F2E),
+                            color = if (mode == AuthScreenMode.VERIFY_CODE) Color(0xFF1E1B18) else Color(0xFF042F2E),
                             fontWeight = FontWeight.ExtraBold
                         )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    TextButton(
-                        onClick = {
-                            isRegisterMode = !isRegisterMode
-                            localError = null
-                            onClearError()
-                        }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = if (isRegisterMode) {
-                                "Already have an account? Login here"
-                            } else {
-                                "New to luckybet.com? Register an account"
-                            },
-                            color = LuckyGoldBright
-                        )
+                        if (mode != AuthScreenMode.LOGIN) {
+                            TextButton(
+                                onClick = {
+                                    mode = AuthScreenMode.LOGIN
+                                    localError = null
+                                    onClearError()
+                                }
+                            ) {
+                                Text("Back to Login", color = LuckyTextSecondary)
+                            }
+                        } else {
+                            TextButton(
+                                onClick = {
+                                    mode = AuthScreenMode.REGISTER
+                                    localError = null
+                                    onClearError()
+                                }
+                            ) {
+                                Text("New user? Register", color = LuckyGoldBright)
+                            }
+                        }
+
+                        if (mode != AuthScreenMode.VERIFY_CODE) {
+                            TextButton(
+                                onClick = {
+                                    mode = AuthScreenMode.VERIFY_CODE
+                                    localError = null
+                                    onClearError()
+                                }
+                            ) {
+                                Text("Enter Code", color = LuckyGoldBright)
+                            }
+                        }
                     }
                 }
             }
