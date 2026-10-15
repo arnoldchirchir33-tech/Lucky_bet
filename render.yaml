@@ -6,6 +6,7 @@ services:
     plan: free
     buildCommand: "npm install"
     startCommand: "npm start"
+    healthCheckPath: /healthz
     envVars:
       - key: PORT
         value: 10000
