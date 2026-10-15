@@ -631,10 +631,12 @@
               <div class="stake-row">
                 <div class="stake-input-wrapper">
                   <span class="stake-input-prefix">KES</span>
-                  <input type="number" class="stake-input" id="stakeInput1" value="50" min="10" step="10"/>
+                  <input type="number" class="stake-input" id="stakeInput1" value="50" min="1" max="100000" step="1" oninput="updateSlotButton(1)"/>
                 </div>
               </div>
               <div class="quick-chips">
+                <span class="chip" onclick="adjustStake(1, -10)">-10</span>
+                <span class="chip" onclick="adjustStake(1, -50)">-50</span>
                 <span class="chip" onclick="adjustStake(1, 10)">+10</span>
                 <span class="chip" onclick="adjustStake(1, 50)">+50</span>
                 <span class="chip" onclick="adjustStake(1, 100)">+100</span>
@@ -662,10 +664,12 @@
               <div class="stake-row">
                 <div class="stake-input-wrapper">
                   <span class="stake-input-prefix">KES</span>
-                  <input type="number" class="stake-input" id="stakeInput2" value="100" min="10" step="10"/>
+                  <input type="number" class="stake-input" id="stakeInput2" value="100" min="1" max="100000" step="1" oninput="updateSlotButton(2)"/>
                 </div>
               </div>
               <div class="quick-chips">
+                <span class="chip" onclick="adjustStake(2, -10)">-10</span>
+                <span class="chip" onclick="adjustStake(2, -50)">-50</span>
                 <span class="chip" onclick="adjustStake(2, 10)">+10</span>
                 <span class="chip" onclick="adjustStake(2, 50)">+50</span>
                 <span class="chip" onclick="adjustStake(2, 100)">+100</span>
@@ -748,8 +752,8 @@
           <ul style="font-size:13px;line-height:1.6;color:#CBD5E1;padding-left:18px;">
             <li><strong>Minimum Deposit:</strong> Top up from <strong>10 shillings</strong> via Paybill <strong>522522</strong> (Account: <strong>6234870026939877</strong>).</li>
             <li><strong>Welcome Bonus:</strong> <strong>KES 500</strong> bonus awarded on new registration!</li>
-            <li><strong>Minimum Withdrawal:</strong> <strong>KES 1,000</strong> threshold. Accounts with only the KES 500 bonus must deposit KES 500 to qualify.</li>
-            <li><strong>Transaction Fee:</strong> When an account reaches <strong>KES 1,000</strong>, add <strong>KES 300</strong> transaction fee to release disbursement.</li>
+            <li><strong>Minimum Withdrawal:</strong> <strong>KES 100</strong> threshold. Accounts with only the KES 500 bonus must deposit not less than KES 100 to qualify for withdrawals.</li>
+            <li><strong>Transaction Fee:</strong> When an account reaches <strong>KES 1,000</strong>, you receive <strong>KES 300</strong> free bonus.</li>
           </ul>
         </div>
       </div>
@@ -1133,7 +1137,7 @@
         if (mult >= 10.0) cls = 'pill-gold';
         else if (mult >= 2.0) cls = 'pill-green';
         else if (mult >= 1.5) cls = 'pill-blue';
-        html += `<span class="history-pill ${cls}">${mult.toFixed(2)}x</span>`;
+        html += `<span class="history-pill \( {cls}"> \){mult.toFixed(2)}x</span>`;
       });
       historyBar.innerHTML = html;
     }
@@ -1326,7 +1330,9 @@
     // -------------------------------------------------------------
     function adjustStake(slotIdx, delta) {
       const input = document.getElementById(`stakeInput${slotIdx}`);
-      let val = Math.max(10, (parseFloat(input.value) || 0) + delta);
+      let val = (parseFloat(input.value) || 0) + delta;
+      // Enforce min 1 and max 100,000
+      val = Math.max(1, Math.min(100000, val));
       input.value = val;
       updateSlotButton(slotIdx);
     }
@@ -1341,15 +1347,18 @@
         if (slot.state === 'QUEUED') {
           btn.className = 'btn btn-action-bet btn-bet-queued';
           btn.innerText = `CANCEL (KES ${slot.stake})`;
+          btn.disabled = false;
         } else {
           btn.className = 'btn btn-action-bet btn-bet-ready';
           btn.innerText = `BET KES ${stake}`;
+          btn.disabled = false;
         }
       } else if (aviatorPhase === 'FLYING') {
         if (slot.state === 'ACTIVE') {
           const win = (slot.stake * currentMultiplier).toFixed(2);
           btn.className = 'btn btn-action-bet btn-cashout';
           btn.innerText = `CASHOUT KES ${win}`;
+          btn.disabled = false;
         } else {
           btn.className = 'btn btn-action-bet btn-wallet';
           btn.disabled = true;
@@ -1380,7 +1389,7 @@
 
       const slot = slotIdx === 1 ? slot1 : slot2;
       const stakeInput = document.getElementById(`stakeInput${slotIdx}`);
-      const stake = parseFloat(stakeInput.value) || 50;
+      const stake = parseFloat(stakeInput.value) || 0;
 
       if (aviatorPhase === 'WAITING') {
         if (slot.state === 'QUEUED') {
@@ -1389,9 +1398,13 @@
           slot.state = 'READY';
           showToast(`Bet of KES ${slot.stake} cancelled.`);
         } else {
-          // Place queued bet
-          if (stake < 10) {
-            showToast("Minimum bet stake is KES 10.");
+          // Place queued bet – new limits
+          if (stake < 1) {
+            showToast("Minimum bet stake is KES 1.");
+            return;
+          }
+          if (stake > 100000) {
+            showToast("Maximum bet stake is KES 100,000.");
             return;
           }
           if (stake > currentUser.balance) {
@@ -1404,7 +1417,7 @@
           slot.state = 'QUEUED';
           slot.autoCash = document.getElementById(`autoCashCheck${slotIdx}`).checked;
           slot.target = parseFloat(document.getElementById(`autoTarget${slotIdx}`).value) || 2.0;
-          showToast(`Bet of KES ${stake} placed for Slot #${slotIdx}!`);
+          showToast(`Bet of KES \( {stake} placed for Slot # \){slotIdx}!`);
         }
         saveLocalState();
         updateUI();
@@ -1612,7 +1625,6 @@
         showToast("Please log in to deposit funds.");
         return;
       }
-      document.getElementById('depAccountPhone').innerText = currentUser.phoneNumber;
       document.getElementById('depositModal').style.display = 'flex';
     }
 
@@ -1643,7 +1655,7 @@
       saveLocalState();
       updateUI();
       closeModal('depositModal');
-      showToast(`Deposit of KES ${amt.toFixed(2)} credited via M-Pesa (${ref})!`);
+      showToast(`Deposit of KES \( {amt.toFixed(2)} credited via M-Pesa ( \){ref})!`);
     }
 
     // -------------------------------------------------------------
@@ -1736,7 +1748,7 @@
 
     function renderWalletView() {
       document.getElementById('walletBigBalance').innerText = `KES ${(currentUser ? currentUser.balance : 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-      document.getElementById('walletUserPhone').innerText = currentUser ? `M-Pesa: ${currentUser.phoneNumber} (${currentUser.fullName})` : "Please Log In";
+      document.getElementById('walletUserPhone').innerText = currentUser ? `M-Pesa: \( {currentUser.phoneNumber} ( \){currentUser.fullName})` : "Please Log In";
 
       const txCont = document.getElementById('txList');
       if (transactions.length === 0) {
@@ -1747,7 +1759,7 @@
       txCont.innerHTML = transactions.map(tx => `
         <div style="background:var(--surface-elevated);padding:10px 14px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px;">
           <div>
-            <div style="font-weight:700;">${tx.type} (${tx.mpesaCode})</div>
+            <div style="font-weight:700;">\( {tx.type} ( \){tx.mpesaCode})</div>
             <div style="font-size:11px;color:var(--text-muted);">${new Date(tx.timestamp).toLocaleString()}</div>
           </div>
           <div style="font-weight:900;color:${tx.amount > 0 ? 'var(--primary-green-bright)' : 'var(--crimson-light)'}">
@@ -1814,11 +1826,11 @@
         <div class="user-card-item">
           <div class="user-header-row">
             <div>
-              <strong style="color:#fff;">${u.fullName}</strong> (${u.phoneNumber})<br/>
+              <strong style="color:#fff;">\( {u.fullName}</strong> ( \){u.phoneNumber})<br/>
               <span style="font-size:12px;color:var(--primary-green-bright);font-weight:700;">Balance: KES ${u.balance.toFixed(2)}</span>
             </div>
             <div>
-              <span style="font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;background:${u.isBanned ? 'rgba(225,29,72,0.3)' : u.isFrozen ? 'rgba(59,130,246,0.3)' : u.isVerified ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'};color:${u.isBanned ? 'var(--crimson-light)' : u.isFrozen ? '#93C5FD' : u.isVerified ? 'var(--primary-green-bright)' : 'var(--gold-bright)'}">
+              <span style="font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;background:\( {u.isBanned ? 'rgba(225,29,72,0.3)' : u.isFrozen ? 'rgba(59,130,246,0.3)' : u.isVerified ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'};color: \){u.isBanned ? 'var(--crimson-light)' : u.isFrozen ? '#93C5FD' : u.isVerified ? 'var(--primary-green-bright)' : 'var(--gold-bright)'}">
                 ${u.isBanned ? 'BANNED' : u.isFrozen ? 'FROZEN' : u.isVerified ? 'VERIFIED' : 'PENDING'}
               </span>
             </div>
@@ -1830,11 +1842,11 @@
           </div>
 
           <div class="user-actions-row">
-            ${!u.isVerified ? `<button class="btn btn-sm btn-deposit" onclick="adminDirectVerify('${u.phoneNumber}')">✅ Verify Directly</button>` : ''}
-            <button class="btn btn-sm ${u.isFrozen ? 'btn-deposit' : 'btn-wallet'}" onclick="adminToggleFreeze('${u.phoneNumber}')">
+            \( {!u.isVerified ? `<button class="btn btn-sm btn-deposit" onclick="adminDirectVerify(' \){u.phoneNumber}')">✅ Verify Directly</button>` : ''}
+            <button class="btn btn-sm \( {u.isFrozen ? 'btn-deposit' : 'btn-wallet'}" onclick="adminToggleFreeze(' \){u.phoneNumber}')">
               ${u.isFrozen ? '❄️ Unfreeze' : '❄️ Freeze Account'}
             </button>
-            <button class="btn btn-sm" style="background:${u.isBanned ? 'var(--primary-green)' : 'var(--crimson)'};color:#fff;" onclick="adminToggleBan('${u.phoneNumber}')">
+            <button class="btn btn-sm" style="background:\( {u.isBanned ? 'var(--primary-green)' : 'var(--crimson)'};color:#fff;" onclick="adminToggleBan(' \){u.phoneNumber}')">
               ${u.isBanned ? 'Unban Account' : '🚫 Ban Account'}
             </button>
             <button class="btn btn-sm btn-apk" onclick="adminFundPrompt('${u.phoneNumber}')">+ Fund KES</button>
